@@ -1,7 +1,12 @@
 from setuptools import find_packages
 from setuptools import setup
 
-REQUIRED_PACKAGES = [''] # If execution failes due to missing packages, you can include them here as a list
+REQUIRED_PACKAGES = [
+    'gcsfs==0.7.1', 
+    'dask[dataframe]==2021.2.0', 
+    'google-cloud-bigquery-storage==1.0.0', 
+    'six==1.15.0'
+] # If execution failes due to missing packages, you can include them here as a list
  
 setup(
     name='trainer', 
