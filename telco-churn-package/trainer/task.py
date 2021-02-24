@@ -25,13 +25,16 @@ from datetime import datetime
 import os
 import pandas as pd
 import logging
-import numpy
-from typing import Union
+import numpy as np
+from typing import Union, List
 import json
 
+# Helps parsing input arguments
 import argparse
+
 # feature categories
 
+# List all binary features: 0,1 or True,Fales or Male,Female etc
 BINARY_FEATURES = [
     'gender',
     'SeniorCitizen',
@@ -40,11 +43,13 @@ BINARY_FEATURES = [
     'PhoneService',
     'PaperlessBilling']
 
+# List all numeric features
 NUMERIC_FEATURES = [
     'tenure',
     'MonthlyCharges',
     'TotalCharges']
 
+# List all categorical features 
 CATEGORICAL_FEATURES = [
     'InternetService',
     'OnlineSecurity',
@@ -57,158 +62,37 @@ CATEGORICAL_FEATURES = [
     'MultipleLines']
 
 ALL_COLUMNS = BINARY_FEATURES+NUMERIC_FEATURES+CATEGORICAL_FEATURES
+
+LABEL = 'Churn'
+
+# We define the index position of each feature. This will be needed when we wil be processing a 
+# numpy array (instead of pandas) that has no column names.
 BINARY_FEATURES_IDX = list(range(0,len(BINARY_FEATURES)))
 NUMERIC_FEATURES_IDX = list(range(len(BINARY_FEATURES), len(BINARY_FEATURES)+len(NUMERIC_FEATURES)))
-CATEGORICAL_FEATURES_IDX = list(range(len(BINARY_FEATURES+NUMERIC_FEATURES), len(BINARY_FEATURES+NUMERIC_FEATURES+CATEGORICAL_FEATURES)))
+CATEGORICAL_FEATURES_IDX = list(range(len(BINARY_FEATURES+NUMERIC_FEATURES), len(ALL_COLUMNS)))
 
 
-# TODO: From the experiment.ipynb copy-paste the load_data_from_gcs function 
-def load_data_from_gcs(data_gcs_path):
-    logging.info("reading gs file: {}".format(data_gcs_path))
-    return dd.read_csv(data_gcs_path, dtype={'TotalCharges': 'object'}).compute()
-
+# TODO: From the experiment.ipynb copy-paste the load_data_from_gcs function
 
 # TODO: From the experiment.ipynb copy-paste the load_data_from_bq function 
-def load_data_from_bq(bq_uri):
-    project,dataset,table =  bq_uri.split(".")
-    bqclient = bigquery.Client(project=PROJECT)
-    bqstorageclient = bigquery_storage.BigQueryReadClient()
-    query_string = """
-    SELECT * from {ds}.{tbl}
-    """.format(ds=dataset, tbl=table)
-
-    return (
-        bqclient.query(query_string)
-        .result()
-        .to_dataframe(bqstorage_client=bqstorageclient)
-    )
-
 
 # TODO: From the experiment.ipynb copy-paste the sort_missing_total_charges function 
-def sort_missing_total_charges(df):
-    df.loc[df.tenure == 0, 'TotalCharges'] = df.loc[df.tenure == 0, 'MonthlyCharges']
-    
 
-# TODO: From the experiment.ipynb copy-paste the data_selection function 
-def data_selection(df):
-    data = df.loc[:, BINARY_FEATURES+NUMERIC_FEATURES+CATEGORICAL_FEATURES]
-    # We create a series with the prediciton label
-    labels = df.Churn
-
-    return data, labels
-
+# TODO: From the experiment.ipynb copy-paste the data_selection function
 
 # TODO: From the experiment.ipynb copy-paste the pipeline_builder function 
-def pipeline_builder(params_svm: dict) -> Pipeline:
-    # Definining a preprocessing step for our pipeline. 
-    # it specifies how the features are going to be transformed
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('bin', OrdinalEncoder(), BINARY_FEATURES_IDX),
-            ('num', StandardScaler(), NUMERIC_FEATURES_IDX),
-            ('cat', OneHotEncoder(handle_unknown='ignore'), CATEGORICAL_FEATURES_IDX)])
 
-
-    # We now create a full pipeline, for preprocessing and training.
-    # for training we selected a linear SVM classifier
-    
-    clf = SVC()
-    clf.set_params(**params_svm)
-    
-    return Pipeline(steps=[ ('preprocessor', preprocessor),
-                          ('classifier', clf)])
-
-
-# TODO: From the experiment.ipynb copy-paste the train_model function 
-def train_model(clf: Pipeline, X: Union[pd.DataFrame, numpy.ndarray], y: Union[pd.DataFrame, numpy.ndarray]) -> float:
-    # run cross validation to get training score. we can use this score to optimise training
-    score = cross_val_score(clf, X, y, cv=10, n_jobs=-1).mean()
-    
-    # Now we fit all our data to the classifier. Shame to leave a portion of the data behind
-    clf.fit(X, y)
-    
-    return score
-      
+# TODO: From the experiment.ipynb copy-paste the train_pipeline function 
     
 # TODO: From the experiment.ipynb copy-paste the process_gcs_uri function 
-def process_gcs_uri(uri):
-    url_arr = uri.split("/")
-    if "." not in url_arr[-1]:
-        file = ""
-    else:
-        file = url_arr.pop()
-    
-    scheme = url_arr[0]
-    bucket = url_arr[2]
-    path = "/".join(url_arr[3:])
-    
-    return scheme, bucket, path, file
-
 
 # TODO: From the experiment.ipynb copy-paste the model_export function 
-def model_export_gcs(clf, model_dir):
-    scheme, bucket, path, file = process_gcs_uri(model_dir)
-    if scheme != "gs:":
-            raise ValueError("URI scheme must be gs")
-    # Write model to a local file
-    
-    # Upload the model to GCS
-    bucket = storage.Client().bucket(bucket)
-    blob = bucket.blob(path + '/model.joblib')
-    
-    blob.upload_from_string(pickle.dumps(clf))
-
     
 # TODO: From the experiment.ipynb copy-paste the prepare_report function 
-def prepare_report(cv_score: float, model_params: dict, classification_report: str, columns: list, example_data: numpy.ndarray) -> str:
-    return """
-Training Job Report    
-    
-Cross Validation Score: {cv_score}
 
-Training Model Parameters: {model_params}
-    
-Test Data Classification Report:
-{classification_report}
-
-Example of data array for prediciton:
-
-Order of columns:
-{columns}
-
-Example for clf.predict()
-{predict_example}
+# TODO: From the experiment.ipynb copy-paste the report_export function
 
 
-Example of GCP API request body:
-{{
-    "instances": {json_example}
-}}
-
-
-Model parameters
-""".format(
-    cv_score=cv_score,
-    model_params=json.dumps(model_params),
-    classification_report=classification_report,
-    columns = columns,
-    predict_example = example_data,
-    json_example = json.dumps(example_data.tolist()))
-
-
-# TODO: From the experiment.ipynb copy-paste the report_export function 
-def report_export_gcs(report, model_dir):
-    scheme, bucket, path, file = process_gcs_uri(model_dir)
-    if scheme != "gs:":
-            raise ValueError("URI scheme must be gs")
-            
-    # Upload the model to GCS
-    bucket = storage.Client().bucket(bucket)
-    blob = bucket.blob(path + '/report.txt')
-    
-    blob.upload_from_string(report)
-
-    
 # Define all the command line arguments your model can accept for training
 if __name__ == '__main__':
     
@@ -271,11 +155,18 @@ if __name__ == '__main__':
         default =  os.environ['AIP_TEST_DATA_URI'] if 'AIP_TEST_DATA_URI' in os.environ else ""
     )
     
+    parser.add_argument("-v", "--verbose", help="increase output verbosity",
+                    action="store_true")
+
+    
     
     args = parser.parse_args()
     arguments = args.__dict__
     
     
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO)
+        
     logging.info('Model artifacts will be exported here: {}'.format(arguments['model_dir']))
     logging.info('Data format: {}'.format(arguments["data_format"]))
     logging.info('Training data uri: {}'.format(arguments['training_data_uri']) )
@@ -283,6 +174,7 @@ if __name__ == '__main__':
     logging.info('Test data uri: {}'.format(arguments['test_data_uri']))
     
     
+    logging.info('Loading {} data'.format(arguments["data_format"]))
     if(arguments['data_format']=='csv'):
         df_train = load_data_from_gcs(arguments['training_data_uri'])
         df_valid = load_data_from_gcs(arguments['validation_data_uri'])
@@ -292,7 +184,8 @@ if __name__ == '__main__':
     else:
         raise ValueError("Invalid data type ")
         
-        
+    
+    logging.info('Defining model parameters')    
     model_params = dict()
     model_params['kernel'] = arguments['model_param_kernel']
     model_params['degree'] = arguments['model_param_degree']
@@ -301,14 +194,19 @@ if __name__ == '__main__':
     sort_missing_total_charges(df_train)
     sort_missing_total_charges(df_valid)
 
+    
+    logging.info('Running feature selection')    
     X_train, y_train = data_selection(df_train)
     X_test, y_test = data_selection(df_valid)
 
+    logging.info('Training pipelines in CV')   
     clf = pipeline_builder(model_params)
 
-    cv_score = train_model(clf, X_train, y_train)
-
-    model_export_gcs(clf, arguments['model_dir'])
+    cv_score = train_pipeline(clf, X_train, y_train)
+    
+    
+    logging.info('Export trained pipeline and report')   
+    pipeline_export_gcs(clf, arguments['model_dir'])
 
     y_pred = clf.predict(X_test)
     
@@ -320,3 +218,6 @@ if __name__ == '__main__':
                         X_test.to_numpy()[0:2])
     
     report_export_gcs(report, arguments['model_dir'])
+    
+    
+    logging.info('Exiting training')
