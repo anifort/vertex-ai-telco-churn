@@ -17,8 +17,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.svm import SVC
-from sklearn.metrics import classification_report, plot_confusion_matrix
-import matplotlib.pyplot as plt  
+from sklearn.metrics import classification_report
 import pickle
 from google.cloud import storage
 from datetime import datetime
@@ -74,23 +73,34 @@ CATEGORICAL_FEATURES_IDX = list(range(len(BINARY_FEATURES+NUMERIC_FEATURES), len
 
 # TODO: From the experiment.ipynb copy-paste the load_data_from_gcs function
 
+
 # TODO: From the experiment.ipynb copy-paste the load_data_from_bq function 
+
 
 # TODO: From the experiment.ipynb copy-paste the sort_missing_total_charges function 
 
+
 # TODO: From the experiment.ipynb copy-paste the data_selection function
+
 
 # TODO: From the experiment.ipynb copy-paste the pipeline_builder function 
 
+
 # TODO: From the experiment.ipynb copy-paste the train_pipeline function 
+
     
 # TODO: From the experiment.ipynb copy-paste the process_gcs_uri function 
 
-# TODO: From the experiment.ipynb copy-paste the model_export function 
+
+# TODO: From the experiment.ipynb copy-paste the model_export function
+
     
 # TODO: From the experiment.ipynb copy-paste the prepare_report function 
 
+
 # TODO: From the experiment.ipynb copy-paste the report_export function
+
+
 
 
 # Define all the command line arguments your model can accept for training
@@ -196,11 +206,11 @@ if __name__ == '__main__':
 
     
     logging.info('Running feature selection')    
-    X_train, y_train = data_selection(df_train)
-    X_test, y_test = data_selection(df_valid)
+    X_train, y_train = data_selection(df_train, ALL_COLUMNS, LABEL)
+    X_test, y_test = data_selection(df_valid, ALL_COLUMNS, LABEL)
 
     logging.info('Training pipelines in CV')   
-    clf = pipeline_builder(model_params)
+    clf = pipeline_builder(model_params, BINARY_FEATURES_IDX, NUMERIC_FEATURES_IDX, CATEGORICAL_FEATURES_IDX)
 
     cv_score = train_pipeline(clf, X_train, y_train)
     
