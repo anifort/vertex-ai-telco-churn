@@ -12,6 +12,7 @@ setup(
     name='trainer', 
     version='0.1', 
     install_requires=REQUIRED_PACKAGES,
+    author='Christos Aniftos',
     packages=find_packages(), # Automatically find packages within this directory or below.
     include_package_data=True, # if packages include any data files, those will be packed together.
     description='Classification training for telco churn prediction model'
