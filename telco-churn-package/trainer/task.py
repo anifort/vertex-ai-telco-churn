@@ -85,7 +85,7 @@ CATEGORICAL_FEATURES_IDX = list(range(len(BINARY_FEATURES+NUMERIC_FEATURES), len
 
 # TODO: From the experiment.ipynb copy-paste the process_gcs_uri function 
 
-# TODO: From the experiment.ipynb copy-paste the model_export function
+# TODO: From the experiment.ipynb copy-paste the pipeline_export_gcs function
 
 # TODO: From the experiment.ipynb copy-paste the prepare_report function 
 
