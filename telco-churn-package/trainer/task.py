@@ -76,20 +76,21 @@ CATEGORICAL_FEATURES_IDX = list(range(len(BINARY_FEATURES+NUMERIC_FEATURES), len
 # TODO: From the experiment.ipynb copy-paste the load_data_from_bq function 
 
 # TODO: From the experiment.ipynb copy-paste the sort_missing_total_charges function 
-
+    
 # TODO: From the experiment.ipynb copy-paste the data_selection function
 
 # TODO: From the experiment.ipynb copy-paste the pipeline_builder function 
 
 # TODO: From the experiment.ipynb copy-paste the train_pipeline function 
-    
+
 # TODO: From the experiment.ipynb copy-paste the process_gcs_uri function 
 
 # TODO: From the experiment.ipynb copy-paste the model_export function
-    
+
 # TODO: From the experiment.ipynb copy-paste the prepare_report function 
 
-# TODO: From the experiment.ipynb copy-paste the report_export function
+# TODO: From the experiment.ipynb copy-paste the report_export_gcs function
+
 
 
 
@@ -179,6 +180,7 @@ if __name__ == '__main__':
         df_train = load_data_from_gcs(arguments['training_data_uri'])
         df_valid = load_data_from_gcs(arguments['validation_data_uri'])
     elif(arguments['data_format']=='bigquery'):
+        print(arguments['training_data_uri'])
         df_train = load_data_from_bq(arguments['training_data_uri'])
         df_valid = load_data_from_bq(arguments['validation_data_uri'])
     else:
