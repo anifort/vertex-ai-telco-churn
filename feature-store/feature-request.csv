@@ -1,0 +1,5 @@
+customer,phone,timestamp,churnlabel
+9214-EKVXR,Apple - iPhone 4,2021-08-23T23:43:17.123Z,false
+3551-GAEGL,Samsung - A100,2021-08-23T23:43:17.123Z,true
+0661-KQHNK,HTC - Hero,2021-08-25T08:43:17.123Z,false
+9214-EKVXR,Apple - iPhone 4,2021-08-25T08:43:17.123Z, false
