@@ -1,0 +1,413 @@
+{
+  "pipelineSpec": {
+    "components": {
+      "comp-custompythonpackagetrainingjob-run": {
+        "executorLabel": "exec-custompythonpackagetrainingjob-run",
+        "inputDefinitions": {
+          "artifacts": {
+            "dataset": {
+              "artifactType": {
+                "schemaTitle": "system.Dataset"
+              }
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "STRING"
+            },
+            "project": {
+              "type": "STRING"
+            }
+          }
+        },
+        "outputDefinitions": {
+          "artifacts": {
+            "model": {
+              "artifactType": {
+                "schemaTitle": "system.Model"
+              }
+            }
+          }
+        }
+      },
+      "comp-model-deploy": {
+        "executorLabel": "exec-model-deploy",
+        "inputDefinitions": {
+          "artifacts": {
+            "model": {
+              "artifactType": {
+                "schemaTitle": "system.Model"
+              }
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "STRING"
+            },
+            "project": {
+              "type": "STRING"
+            }
+          }
+        },
+        "outputDefinitions": {
+          "artifacts": {
+            "endpoint": {
+              "artifactType": {
+                "schemaTitle": "system.Artifact"
+              }
+            }
+          }
+        }
+      },
+      "comp-produce-metrics": {
+        "executorLabel": "exec-produce-metrics",
+        "inputDefinitions": {
+          "artifacts": {
+            "model": {
+              "artifactType": {
+                "schemaTitle": "system.Model"
+              }
+            }
+          }
+        },
+        "outputDefinitions": {
+          "artifacts": {
+            "accuracy": {
+              "artifactType": {
+                "schemaTitle": "system.Metrics"
+              }
+            },
+            "metrics": {
+              "artifactType": {
+                "schemaTitle": "system.ClassificationMetrics"
+              }
+            }
+          }
+        }
+      },
+      "comp-tabulardataset-create": {
+        "executorLabel": "exec-tabulardataset-create",
+        "inputDefinitions": {
+          "parameters": {
+            "location": {
+              "type": "STRING"
+            },
+            "project": {
+              "type": "STRING"
+            }
+          }
+        },
+        "outputDefinitions": {
+          "artifacts": {
+            "dataset": {
+              "artifactType": {
+                "schemaTitle": "system.Dataset"
+              }
+            }
+          }
+        }
+      }
+    },
+    "deploymentSpec": {
+      "executors": {
+        "exec-custompythonpackagetrainingjob-run": {
+          "container": {
+            "args": [
+              "--init.display_name",
+              "train_churn_prediction_v1",
+              "--init.python_package_gcs_uri",
+              "gs://myfirstproject-226013/telco-churn/dist/trainer-0.1.tar.gz",
+              "--init.python_module_name",
+              "trainer.task",
+              "--init.model_description",
+              "Churn prediction model",
+              "--init.container_uri",
+              "eu.gcr.io/cloud-aiplatform/training/scikit-learn-cpu.0-23:latest",
+              "--init.model_serving_container_image_uri",
+              "eu.gcr.io/cloud-aiplatform/prediction/sklearn-cpu.0-23:latest",
+              "--init.staging_bucket",
+              "gs://myfirstproject-226013/telco-churn/pipeline/staging",
+              "--method.model_display_name",
+              "myChurnModelv1",
+              "--method.base_output_dir",
+              "gs://myfirstproject-226013/telco-churn/pipeline/assets-v1",
+              "--method.bigquery_destination",
+              "bq://myfirstproject-226013",
+              "--method.machine_type",
+              "n1-standard-2",
+              "--method.training_fraction_split",
+              "0.8",
+              "--method.validation_fraction_split",
+              "0.1",
+              "--method.test_fraction_split",
+              "0.1",
+              "--executor_input",
+              "{{$}}",
+              "--resource_name_output_artifact_uri",
+              "{{$.outputs.artifacts['model'].uri}}",
+              "--init.project",
+              "{{$.inputs.parameters['project']}}",
+              "--method.dataset",
+              "{{$.inputs.artifacts['dataset'].uri}}",
+              "--init.location",
+              "{{$.inputs.parameters['location']}}"
+            ],
+            "command": [
+              "python3",
+              "-m",
+              "google_cloud_pipeline_components.aiplatform.remote_runner",
+              "--cls_name",
+              "CustomPythonPackageTrainingJob",
+              "--method_name",
+              "run"
+            ],
+            "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:0.1.4"
+          }
+        },
+        "exec-model-deploy": {
+          "container": {
+            "args": [
+              "--method.machine_type",
+              "n1-standard-4",
+              "--executor_input",
+              "{{$}}",
+              "--resource_name_output_artifact_uri",
+              "{{$.outputs.artifacts['endpoint'].uri}}",
+              "--init.model_name",
+              "{{$.inputs.artifacts['model'].uri}}",
+              "--init.project",
+              "{{$.inputs.parameters['project']}}",
+              "--init.location",
+              "{{$.inputs.parameters['location']}}"
+            ],
+            "command": [
+              "python3",
+              "-m",
+              "google_cloud_pipeline_components.aiplatform.remote_runner",
+              "--cls_name",
+              "Model",
+              "--method_name",
+              "deploy"
+            ],
+            "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:0.1.4"
+          }
+        },
+        "exec-produce-metrics": {
+          "container": {
+            "args": [
+              "--executor_input",
+              "{{$}}",
+              "--function_to_execute",
+              "produce_metrics"
+            ],
+            "command": [
+              "sh",
+              "-c",
+              "(python3 -m ensurepip || python3 -m ensurepip --user) && (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet                 --no-warn-script-location 'sklearn' 'kfp==1.7.1' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet                 --no-warn-script-location 'sklearn' 'kfp==1.7.1' --user) && \"$0\" \"$@\"",
+              "sh",
+              "-ec",
+              "program_path=$(mktemp -d)\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\npython3 -m kfp.components.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+              "\nfrom kfp.v2.dsl import *\nfrom typing import *\n\ndef produce_metrics(model: Input[Model], metrics: Output[ClassificationMetrics], accuracy: Output[Metrics]):\n\n    import logging\n\n    print(\"We are here\")\n    print(vars(model))\n    print(\"end\")\n\n    logging.info(model.uri)\n    logging.info(model.path)\n    logging.info(vars(model))\n\n    accuracy.log_metric('accuracy', (86.0))\n\n    from sklearn.ensemble import RandomForestClassifier\n    from sklearn.metrics import roc_curve\n    from sklearn.datasets import load_wine\n    from sklearn.model_selection import train_test_split, cross_val_predict\n    from sklearn.metrics import confusion_matrix\n\n    X, y = load_wine(return_X_y=True)\n    # Binary classification problem for label 1.\n    y = y == 1\n\n    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)\n    rfc = RandomForestClassifier(n_estimators=10, random_state=42)\n    rfc.fit(X_train, y_train)\n    y_scores = cross_val_predict(rfc, X_train, y_train, cv=3, method='predict_proba')\n    y_predict = cross_val_predict(rfc, X_train, y_train, cv=3, method='predict')\n    fpr, tpr, thresholds = roc_curve(y_true=y_train, y_score=y_scores[:,1], pos_label=True)\n    metrics.log_roc_curve(fpr, tpr, thresholds)\n\n    predictions = rfc.predict(X_test)\n\n    metrics.log_confusion_matrix(\n        ['a', 'b'],\n        confusion_matrix(y_test, predictions).tolist() # .tolist() to convert np array to list.\n    )\n\n"
+            ],
+            "image": "python:3.8"
+          }
+        },
+        "exec-tabulardataset-create": {
+          "container": {
+            "args": [
+              "--method.display_name",
+              "churn-pred",
+              "--method.bq_source",
+              "bq://myfirstproject-226013.telco.churn",
+              "--executor_input",
+              "{{$}}",
+              "--resource_name_output_artifact_uri",
+              "{{$.outputs.artifacts['dataset'].uri}}",
+              "--method.project",
+              "{{$.inputs.parameters['project']}}",
+              "--method.location",
+              "{{$.inputs.parameters['location']}}"
+            ],
+            "command": [
+              "python3",
+              "-m",
+              "google_cloud_pipeline_components.aiplatform.remote_runner",
+              "--cls_name",
+              "TabularDataset",
+              "--method_name",
+              "create"
+            ],
+            "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:0.1.4"
+          }
+        }
+      }
+    },
+    "pipelineInfo": {
+      "name": "telco-churn-job-v1"
+    },
+    "root": {
+      "dag": {
+        "outputs": {
+          "artifacts": {
+            "produce-metrics-accuracy": {
+              "artifactSelectors": [
+                {
+                  "outputArtifactKey": "accuracy",
+                  "producerSubtask": "produce-metrics"
+                }
+              ]
+            },
+            "produce-metrics-metrics": {
+              "artifactSelectors": [
+                {
+                  "outputArtifactKey": "metrics",
+                  "producerSubtask": "produce-metrics"
+                }
+              ]
+            }
+          }
+        },
+        "tasks": {
+          "custompythonpackagetrainingjob-run": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-custompythonpackagetrainingjob-run"
+            },
+            "dependentTasks": [
+              "tabulardataset-create"
+            ],
+            "inputs": {
+              "artifacts": {
+                "dataset": {
+                  "taskOutputArtifact": {
+                    "outputArtifactKey": "dataset",
+                    "producerTask": "tabulardataset-create"
+                  }
+                }
+              },
+              "parameters": {
+                "location": {
+                  "componentInputParameter": "location"
+                },
+                "project": {
+                  "componentInputParameter": "project_id"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "custompythonpackagetrainingjob-run"
+            }
+          },
+          "model-deploy": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-model-deploy"
+            },
+            "dependentTasks": [
+              "custompythonpackagetrainingjob-run"
+            ],
+            "inputs": {
+              "artifacts": {
+                "model": {
+                  "taskOutputArtifact": {
+                    "outputArtifactKey": "model",
+                    "producerTask": "custompythonpackagetrainingjob-run"
+                  }
+                }
+              },
+              "parameters": {
+                "location": {
+                  "componentInputParameter": "location"
+                },
+                "project": {
+                  "componentInputParameter": "project_id"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "model-deploy"
+            }
+          },
+          "produce-metrics": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-produce-metrics"
+            },
+            "dependentTasks": [
+              "custompythonpackagetrainingjob-run"
+            ],
+            "inputs": {
+              "artifacts": {
+                "model": {
+                  "taskOutputArtifact": {
+                    "outputArtifactKey": "model",
+                    "producerTask": "custompythonpackagetrainingjob-run"
+                  }
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "produce-metrics"
+            }
+          },
+          "tabulardataset-create": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-tabulardataset-create"
+            },
+            "inputs": {
+              "parameters": {
+                "location": {
+                  "componentInputParameter": "location"
+                },
+                "project": {
+                  "componentInputParameter": "project_id"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "tabulardataset-create"
+            }
+          }
+        }
+      },
+      "inputDefinitions": {
+        "parameters": {
+          "location": {
+            "type": "STRING"
+          },
+          "project_id": {
+            "type": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "produce-metrics-accuracy": {
+            "artifactType": {
+              "schemaTitle": "system.Metrics"
+            }
+          },
+          "produce-metrics-metrics": {
+            "artifactType": {
+              "schemaTitle": "system.ClassificationMetrics"
+            }
+          }
+        }
+      }
+    },
+    "schemaVersion": "2.0.0",
+    "sdkVersion": "kfp-1.7.1"
+  },
+  "runtimeConfig": {
+    "gcsOutputDirectory": "gs://myfirstproject-226013/telco-churn/pipeline/pl-root"
+  }
+}

@@ -1,0 +1,22 @@
+name: Produce metrics
+description: Produce metrics
+implementation:
+  container:
+    image: python:3.7
+    command:
+    - sh
+    - -ec
+    - |
+      program_path=$(mktemp)
+      printf "%s" "$0" > "$program_path"
+      python3 -u "$program_path" "$@"
+    - |
+      def pass_locals():
+          return dict_func(locals())  # noqa: F821 TODO
+
+      import argparse
+      _parser = argparse.ArgumentParser(prog='Produce metrics', description='Produce metrics')
+      _parsed_args = vars(_parser.parse_args())
+
+      _outputs = Produce metrics(**_parsed_args)
+    args: []
