@@ -89,7 +89,7 @@ def load_data_from_gcs(data_gcs_path: str) -> pd.DataFrame:
     # to overcome this we manually define TotalCharges as object. 
     # We will later fix this upnormality
     logging.info("reading gs data: {}".format(data_gcs_path))
-    return dd.read_csv(data_gcs_path, dtype={'TotalCharges': 'object'}).compute()
+    return dd.read_csv(data_gcs_path, dtype={'TotalCharges': 'object', 'MonthlyCharges': 'float64'}).compute()
 
 # TODO: From the experiment.ipynb copy-paste the load_data_from_bq function 
 def load_data_from_bq(bq_uri: str) -> pd.DataFrame:
